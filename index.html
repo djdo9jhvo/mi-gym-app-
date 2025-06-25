@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gestión de Membresías - Gym</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <header>
+<div class="imagen-superior">
+    <img src="https://scontent.fmex19-1.fna.fbcdn.net/v/t39.30808-6/473803023_1175282294597709_1303986405132490759_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=8CTLT_okTUsQ7kNvwH4gXCF&_nc_oc=Adkn7DlnArj5torxCVJR0ieSXD41iIqUyRaftoNzLBd7YfDUmw5pwlpYYyPkYEQWdwBFlK_wdipBXD-xAwZQOAgj&_nc_zt=23&_nc_ht=scontent.fmex19-1.fna&_nc_gid=kGJfOpwNzZORxtLfXB634w&oh=00_AfPTyeAaZ-mG7aeURFXoZS8OzcKgBHwTC4bLUK1eNxNavA&oe=6858E5FC" alt="Logo" />
+</div>
+        <h1>Gestión de Membresías </h1>
+        <h1>MASTER - Gym</h1>
+    </header>
+
+    <nav>
+        <button onclick="mostrarSeccion('registroEntrada')">Registrar Entrada</button>
+        <button onclick="mostrarSeccion('registro')">Registrar Miembro</button>
+        <button onclick="mostrarSeccion('tabla')">Ver Miembros</button>
+        <button onclick="mostrarInactivos()">Ver Inactivos</button>
+        <button onclick="mostrarGraficaMembresias()">Membresías</button>
+        <button onclick="mostrarIngresos()">Ingresos</button>
+        <button onclick="document.getElementById('archivoExcel').click()">Importar Excel</button>
+        <input type="file" id="archivoExcel" style="display:none" accept=".xlsx,.csv" onchange="importarDesdeExcel(event)">
+        <button onclick="exportarAExcel()">Exportar Excel</button>
+    </nav>
+
+    <!-- REGISTRO ENTRADA -->
+    <div class="container" id="registroEntrada">
+        <h2>Registrar Entrada al Gym</h2>
+        <input type="text" id="idEntrada" placeholder="ID del Miembro" />
+        <button onclick="registrarEntrada()">Registrar Entrada</button>
+        <div id="infoEntrada" class="member-card"></div>
+    </div>
+
+    <!-- VENTANA MODAL DE PAGO -->
+    <div id="ventanaPago" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>Actualizar Pago</h3>
+            <p id="nombreActualizar"></p>
+            <label>Tipo:</label>
+            <select id="nuevoTipoUsuario">
+                <option value="estudiante">Estudiante</option>
+                <option value="normal">Normal</option>
+            </select>
+            <label>Duración:</label>
+            <select id="nuevaDuracionPago">
+                <option value="1">Visita</option>
+                <option value="7">Semanal</option>
+                <option value="30">Mensual</option>
+                <option value="60">Bimestral</option>
+                <option value="180">Semestral</option>
+                <option value="365">Anual</option>
+            </select>
+            <label>Fecha de Pago:</label>
+            <input type="date" id="nuevaFechaPago" />
+            <label>Monto:</label>
+            <input type="number" id="nuevoMontoPago" min="0" step="0.01" />
+            <br><br>
+            <button onclick="confirmarPago()">Actualizar Pago</button>
+            <button onclick="cerrarVentanaPago()">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- FORMULARIO DE REGISTRO -->
+    <div class="container" id="registro">
+        <h2>Registrar Nuevo Miembro</h2>
+        <input type="text" id="idMiembro" placeholder="ID Miembro" />
+        <input type="text" id="nombreMiembro" placeholder="Nombre" />
+        <input type="date" id="fechaPago" />
+        <label>Tipo:</label>
+        <select id="tipoUsuario">
+            <option value="estudiante">Estudiante</option>
+            <option value="normal">Normal</option>
+        </select>
+        <label>Duración:</label>
+        <select id="duracionMembresia">
+            <option value="1">Visita</option>
+            <option value="7">Semanal</option>
+            <option value="30">Mensual</option>
+            <option value="60">Bimestral</option>
+            <option value="180">Semestral</option>
+            <option value="365">Anual</option>
+        </select>
+        <input type="number" id="montoPago" placeholder="Monto" min="0" step="0.01" />
+        <input type="file" id="fotoMiembro" />
+        <button onclick="registrarMiembro()">Guardar</button>
+    </div>
+
+    <!-- TABLA PRINCIPAL -->
+    <div class="container" id="tabla">
+        <h2>Lista de Miembros</h2>
+        <input type="text" id="buscador" placeholder="Buscar por ID o Nombre" onkeyup="buscarMiembros()" />
+        <table id="tablaMiembros">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Fecha Pago</th>
+                    <th>Fecha Fin</th>
+                    <th>Tipo</th>
+                    <th>Duración</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- INACTIVOS -->
+   <div class="container" id="tablaInactivos">
+    <h2>Miembros Inactivos</h2>
+
+    <label for="fechaInactivos">Buscar por Fecha de Pago:</label>
+    <input type="date" id="fechaInactivos" onchange="filtrarInactivosPorFecha()" />
+
+    <table id="tablaMiembrosInactivos">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Fecha Pago</th>
+                <th>Fecha Fin</th>
+                <th>Tipo</th>
+                <th>Duración</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+    <!-- DETALLE INDIVIDUAL -->
+    <div class="container" id="fichaMiembro">
+        <div class="member-card" id="detalleMiembro"></div>
+        <div id="tablaAsistencia"></div>
+        <button onclick="volverLista()">Regresar a la Lista</button>
+    </div>
+
+    <!-- GRÁFICAS -->
+    <div class="container" id="graficaContainer">
+        <h2>Miembros por Membresía</h2>
+        <canvas id="graficaMembresias"></canvas>
+        <div id="detallesMembresias" class="membresias-categorias"></div>
+    </div>
+
+    <div class="container" id="tipoContainer">
+        <h2>Ingresos por Mes</h2>
+        <canvas id="graficaPorTipo"></canvas>
+        <div id="listasPorTipo" class="membresias-categorias"></div>
+    </div>
+
+<script type="module" src="firebase-init.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
