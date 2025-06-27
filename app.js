@@ -95,7 +95,6 @@ function registrarMiembro() {
     }
 }
 
-
 function renderTabla(filtrados = null) {
     const tbody = document.querySelector('#tablaMiembros tbody');
     tbody.innerHTML = '';
@@ -198,7 +197,6 @@ function modificarMiembro(index) {
     mostrarSeccion('registro');
 }
 
-
 function eliminarMiembro(index) {
     if (confirm("¿Eliminar este miembro?")) {
         miembros.splice(index, 1);
@@ -230,7 +228,7 @@ function registrarEntrada() {
     }
 
     const estado = verificarEstado(miembro.fechaPago, miembro.duracion);
-
+/*
     if (estado === "Inactivo") {
         miembroParaActualizar = miembro;
         document.getElementById('nombreActualizar').innerText = `Miembro: ${miembro.nombre}`;
@@ -241,7 +239,7 @@ function registrarEntrada() {
         document.getElementById('ventanaPago').style.display = 'flex';
         return;
     }
-
+*/
     registrarAsistenciaSinAlerta(miembro);
     actualizarListaEntradasHoy(miembro.id);
 
@@ -760,6 +758,10 @@ document.getElementById('checkCambiarFoto').addEventListener('change', function 
 document.getElementById('checkCambiarFoto').addEventListener('change', function () {
     document.getElementById('fotoMiembro').disabled = !this.checked;
 });
+
+
+
+
 
 
 
