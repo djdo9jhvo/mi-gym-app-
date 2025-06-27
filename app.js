@@ -3,6 +3,7 @@ let indexEditando = null;
 let miembroParaActualizar = null;
 let miembrosConEntradaHoy = [];
 let indiceEntradaActual = -1;
+let miembroEnEdicion = null;
 
 
 function convertirABase64(archivo, callback) {
@@ -42,6 +43,9 @@ function registrarMiembro() {
     const tipoUsuario = document.getElementById('tipoUsuario').value;
     const duracion = document.getElementById('duracionMembresia').value;
     const monto = parseFloat(document.getElementById('montoPago').value);
+    const yaPago = document.getElementById('checkPago').checked;
+
+    const cambiarFoto = document.getElementById('checkCambiarFoto')?.checked;
     const foto = document.getElementById('fotoMiembro').files[0];
 
     if (!id || !nombre || !fechaPago || !duracion || isNaN(monto)) {
@@ -51,7 +55,8 @@ function registrarMiembro() {
 
     const nuevoMiembro = {
         id, nombre, fechaPago, tipoUsuario, duracion, monto,
-        urlFoto: '', entradas: []
+        urlFoto: '', entradas: [],
+        pagoConfirmado: yaPago
     };
 
     const procesar = (base64 = '') => {
@@ -74,20 +79,34 @@ function registrarMiembro() {
         indexEditando = null;
     };
 
-    if (foto) {
-        convertirABase64(foto, base64 => procesar(base64));
-    } else {
-        if (indexEditando !== null)
+    if (indexEditando !== null) {
+        if (cambiarFoto && foto) {
+            convertirABase64(foto, base64 => procesar(base64));
+        } else {
             nuevoMiembro.urlFoto = miembros[indexEditando].urlFoto;
-        procesar();
+            procesar();
+        }
+    } else {
+        if (foto) {
+            convertirABase64(foto, base64 => procesar(base64));
+        } else {
+            alert("Debes seleccionar una foto para el nuevo miembro");
+        }
     }
 }
+
 
 function renderTabla(filtrados = null) {
     const tbody = document.querySelector('#tablaMiembros tbody');
     tbody.innerHTML = '';
 
-    (filtrados || miembros).forEach((miembro, index) => {
+    // 1. Creamos una copia y la ordenamos numéricamente por ID
+    const lista = (filtrados || miembros)
+        .slice()
+        .sort((a, b) => parseInt(a.id) - parseInt(b.id));
+
+    // 2. Recorremos la lista ordenada
+    lista.forEach((miembro, index) => {
         const estado = verificarEstado(miembro.fechaPago, miembro.duracion);
         const fechaFin = calcularFechaFin(miembro.fechaPago, miembro.duracion);
         const clase = estado === 'Activo' ? 'activo' : 'inactivo';
@@ -147,6 +166,7 @@ function verFicha(index) {
         <p>Fecha Pago: ${miembro.fechaPago}</p>
         <p>Fecha Fin: ${fechaFin}</p>
         <p>Monto: $${miembro.monto.toFixed(2)}</p>
+        <p>Pago confirmado: ${miembro.pagoConfirmado ? "✅ Sí" : "❌ No"}</p>
         <p class="${clase}">Estado: ${estado}</p>
     `;
     renderTablaAsistencia(miembro);
@@ -156,14 +176,28 @@ function verFicha(index) {
 function modificarMiembro(index) {
     const m = miembros[index];
     indexEditando = index;
+
+    // Rellenar los campos
     document.getElementById('idMiembro').value = m.id;
     document.getElementById('nombreMiembro').value = m.nombre;
     document.getElementById('fechaPago').value = m.fechaPago;
     document.getElementById('tipoUsuario').value = m.tipoUsuario;
     document.getElementById('duracionMembresia').value = m.duracion;
     document.getElementById('montoPago').value = m.monto;
+
+    // ✅ IMPORTANTE: limpiar el input file (para evitar bugs)
+    document.getElementById('fotoMiembro').value = '';
+
+    // ✅ Desactivar el campo de foto
+    document.getElementById('fotoMiembro').disabled = true;
+
+    // ✅ Desmarcar el checkbox "¿Cambiar foto?"
+    document.getElementById('checkCambiarFoto').checked = false;
+
+    // Mostrar la sección de registro
     mostrarSeccion('registro');
 }
+
 
 function eliminarMiembro(index) {
     if (confirm("¿Eliminar este miembro?")) {
@@ -516,11 +550,18 @@ function filtrarInactivosPorFecha() {
 }
 
 function modificarDesdeInactivos(id) {
-    const index = miembros.findIndex(m => m.id === id);
-    if (index !== -1) {
-        modificarMiembro(index);
-        mostrarSeccion('registro');
-    }
+    const m = miembros.find(mi => mi.id === id);
+    if (!m) return;
+
+    miembroEnEdicion = m;
+
+    document.getElementById("nombreModificar").innerText = `Miembro: ${m.nombre}`;
+    document.getElementById("modTipoUsuario").value = m.tipoUsuario;
+    document.getElementById("modDuracion").value = m.duracion;
+    document.getElementById("modFechaPago").value = m.fechaPago;
+    document.getElementById("modMonto").value = m.monto;
+
+    document.getElementById("ventanaModificarPago").style.display = "flex";
 }
 
 function mostrarInactivos() {
@@ -532,7 +573,10 @@ function renderInactivos() {
     const tbody = document.querySelector("#tablaMiembrosInactivos tbody");
     tbody.innerHTML = "";
 
-    const inactivos = miembros.filter(m => verificarEstado(m.fechaPago, m.duracion) === "Inactivo");
+    const inactivos = miembros
+    .filter(m => verificarEstado(m.fechaPago, m.duracion) === "Inactivo")
+    .sort((a, b) => parseInt(a.id) - parseInt(b.id));
+
 
     inactivos.forEach((m, i) => {
         const fechaFin = calcularFechaFin(m.fechaPago, m.duracion);
@@ -580,6 +624,144 @@ function buscarMiembros() {
 function volverLista() {
     mostrarSeccion('tabla');
 }
+
+function filtrarInactivosPorRango() {
+    const fechaInicio = document.getElementById("fechaInicioInactivos").value;
+    const fechaFin = document.getElementById("fechaFinInactivos").value;
+    const tbody = document.querySelector("#tablaMiembrosInactivos tbody");
+    tbody.innerHTML = "";
+
+    if (!fechaInicio || !fechaFin) {
+        alert("Selecciona ambas fechas");
+        return;
+    }
+
+    const inactivos = miembros.filter(m => {
+        const estado = verificarEstado(m.fechaPago, m.duracion);
+        return estado === "Inactivo" &&
+            m.fechaPago >= fechaInicio &&
+            m.fechaPago <= fechaFin;
+    });
+
+    if (inactivos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9">No se encontraron miembros inactivos en ese rango</td></tr>`;
+        return;
+    }
+
+    inactivos.forEach((m, i) => {
+        const fechaFin = calcularFechaFin(m.fechaPago, m.duracion);
+        tbody.innerHTML += `
+            <tr>
+                <td>${m.id}</td>
+                <td>${m.nombre}</td>
+                <td>${m.fechaPago}</td>
+                <td>${fechaFin}</td>
+                <td>${m.tipoUsuario}</td>
+                <td>${duracionTexto(m.duracion)}</td>
+                <td>$${m.monto.toFixed(2)}</td>
+                <td class="inactivo">Inactivo</td>
+                <td><button onclick="modificarDesdeInactivos('${m.id}')">Modificar</button></td>
+            </tr>`;
+    });
+}
+
+function confirmarModificacion() {
+    if (!miembroEnEdicion) return;
+
+    miembroEnEdicion.tipoUsuario = document.getElementById("modTipoUsuario").value;
+    miembroEnEdicion.duracion = document.getElementById("modDuracion").value;
+    miembroEnEdicion.fechaPago = document.getElementById("modFechaPago").value;
+    miembroEnEdicion.monto = parseFloat(document.getElementById("modMonto").value);
+
+    guardarDatos();  // ya la tienes en tu código
+    cerrarVentanaModificar();
+    renderInactivos();  // vuelve a dibujar la tabla
+}
+
+function cerrarVentanaModificar() {
+    document.getElementById("ventanaModificarPago").style.display = "none";
+    miembroEnEdicion = null;
+}
+
+function contarAsistenciasPorDia() {
+    const conteo = {};
+
+    miembros.forEach(miembro => {
+        miembro.entradas.forEach(fecha => {
+            if (!conteo[fecha]) conteo[fecha] = 0;
+            conteo[fecha]++;
+        });
+    });
+
+    return conteo;
+}
+
+function mostrarTablaAsistenciasPorDia() {
+    const asistencias = contarAsistenciasPorDia();
+
+    // Ordenamos por fecha
+    const fechas = Object.keys(asistencias).sort();
+    const totales = fechas.map(f => asistencias[f]);
+
+    // Mostramos la tabla
+    const contenedor = document.getElementById("tablaAsistenciasDia");
+    contenedor.innerHTML = `
+        <table>
+            <thead><tr><th>Fecha</th><th>Total</th></tr></thead>
+            <tbody>
+                ${fechas.map(fecha => `
+                    <tr><td>${fecha}</td><td>${asistencias[fecha]}</td></tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    // Gráfica de barras
+    const ctx = document.getElementById("graficaAsistenciasPorDia").getContext("2d");
+
+    // Si ya había una gráfica, la destruimos
+    if (window.graficaAsistenciaDia) {
+        window.graficaAsistenciaDia.destroy();
+    }
+
+   window.graficaAsistenciaDia = new Chart(ctx, {
+    type: "bar",
+    data: {
+        labels: fechas,
+        datasets: [{
+            label: "Asistencias por Día",
+            data: totales,
+            backgroundColor: "#4CAF50"
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false, // Esto permite que respete el alto fijo
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+
+
+
+    mostrarSeccion("tablaAsistenciasDiaSeccion");
+}
+
+// Escucha si se marca el checkbox de "cambiar foto"
+document.getElementById('checkCambiarFoto').addEventListener('change', function () {
+  // Si está marcado, habilita el input de imagen; si no, lo bloquea
+  document.getElementById('fotoMiembro').disabled = !this.checked;
+});
+
+document.getElementById('checkCambiarFoto').addEventListener('change', function () {
+    document.getElementById('fotoMiembro').disabled = !this.checked;
+});
+
+
 
 
 
