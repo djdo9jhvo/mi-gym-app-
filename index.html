@@ -10,10 +10,10 @@
 <body>
     <header>
 <div class="imagen-superior">
-    <img src="https://scontent.fmex19-1.fna.fbcdn.net/v/t39.30808-6/473803023_1175282294597709_1303986405132490759_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=8CTLT_okTUsQ7kNvwH4gXCF&_nc_oc=Adkn7DlnArj5torxCVJR0ieSXD41iIqUyRaftoNzLBd7YfDUmw5pwlpYYyPkYEQWdwBFlK_wdipBXD-xAwZQOAgj&_nc_zt=23&_nc_ht=scontent.fmex19-1.fna&_nc_gid=kGJfOpwNzZORxtLfXB634w&oh=00_AfPTyeAaZ-mG7aeURFXoZS8OzcKgBHwTC4bLUK1eNxNavA&oe=6858E5FC" alt="Logo" />
+    <img src="https://th.bing.com/th/id/OIP.LgsRrkORWHfnW__nDurOdAHaEK?w=1024&h=576&rs=1&pid=ImgDetMain" alt="Logo Gym" style="height:60px;">
 </div>
         <h1>Gestión de Membresías </h1>
-        <h1>MASTER - Gym</h1>
+        <h1>MASTER - GYM</h1>
     </header>
 
     <nav>
@@ -23,6 +23,7 @@
         <button onclick="mostrarInactivos()">Ver Inactivos</button>
         <button onclick="mostrarGraficaMembresias()">Membresías</button>
         <button onclick="mostrarIngresos()">Ingresos</button>
+        <button onclick="mostrarTablaAsistenciasPorDia()"> Ver Asistencias por Día</button>
         <button onclick="document.getElementById('archivoExcel').click()">Importar Excel</button>
         <input type="file" id="archivoExcel" style="display:none" accept=".xlsx,.csv" onchange="importarDesdeExcel(event)">
         <button onclick="exportarAExcel()">Exportar Excel</button>
@@ -87,7 +88,16 @@
         </select>
         <input type="number" id="montoPago" placeholder="Monto" min="0" step="0.01" />
         <input type="file" id="fotoMiembro" />
+        <label style="display: flex; align-items: center; gap: 6px; margin-top: 5px;">
+  <input type="checkbox" id="checkCambiarFoto">
+  ¿Cambiar foto?
+</label>
+
         <button onclick="registrarMiembro()">Guardar</button>
+        <label style="display: flex; align-items: center; gap: 5px;">
+  <input type="checkbox" id="checkPago" checked>
+  Pago De Membresía
+</label>
     </div>
 
     <!-- TABLA PRINCIPAL -->
@@ -117,7 +127,10 @@
     <h2>Miembros Inactivos</h2>
 
     <label for="fechaInactivos">Buscar por Fecha de Pago:</label>
-    <input type="date" id="fechaInactivos" onchange="filtrarInactivosPorFecha()" />
+    <input type="date" id="fechaInicioInactivos">
+    <input type="date" id="fechaFinInactivos">
+    <button onclick="filtrarInactivosPorRango()">Filtrar</button>
+
 
     <table id="tablaMiembrosInactivos">
         <thead>
@@ -160,5 +173,55 @@
 <script type="module" src="firebase-init.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
+    
+    
+  <div id="ventanaModificarPago" class="modal">
+  <div class="modal-contenido">
+    <h2>Modificar Datos de Pago</h2>
+    <p id="nombreModificar" style="font-weight: bold;"></p>
+
+    <label>Tipo Usuario:</label><br>
+    <select id="modTipoUsuario">
+      <option value="estudiante">Estudiante</option>
+      <option value="normal">Normal</option>
+      <option value="vip">VIP</option>
+    </select><br><br>
+
+    <label>Duración:</label><br>
+    <select id="modDuracion">
+    <option value="1">Visita</option>
+   <option value="7">Semana</option>
+  <option value="30">Mensual</option>
+  <option value="60">Bimestral</option>
+  <option value="180">Semestral</option>
+  <option value="365">Anual</option>
+</select><br><br>
+
+
+    <label>Fecha de pago:</label><br>
+    <input type="date" id="modFechaPago"><br><br>
+
+    <label>Monto ($):</label><br>
+    <input type="number" id="modMonto"><br><br>
+
+    <div style="display: flex; justify-content: space-between;">
+      <button onclick="confirmarModificacion()">💾 Guardar</button>
+      <button onclick="cerrarVentanaModificar()">❌ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="tablaAsistenciasDiaSeccion" class="container" style="display:none;">
+  <h3>📊 Asistencias por Día</h3>
+  <div class="grafica-box">
+  <canvas id="graficaAsistenciasPorDia"></canvas>
+</div>
+
+  <div id="tablaAsistenciasDia" style="margin-top: 20px;"></div>
+  <button onclick="mostrarSeccion('tabla')">⬅ Volver a lista</button>
+</div>
+
+
+
 </body>
 </html>
