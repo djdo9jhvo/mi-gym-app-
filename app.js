@@ -4,6 +4,10 @@ let miembroParaActualizar = null;
 let miembrosConEntradaHoy = [];
 let indiceEntradaActual = -1;
 let miembroEnEdicion = null;
+let miembrosPaginados = [];
+let paginaActual = 1;
+const miembrosPorPagina = 20;
+
 
 
 function convertirABase64(archivo, callback) {
@@ -99,13 +103,20 @@ function renderTabla(filtrados = null) {
     const tbody = document.querySelector('#tablaMiembros tbody');
     tbody.innerHTML = '';
 
-    // 1. Creamos una copia y la ordenamos numéricamente por ID
     const lista = (filtrados || miembros)
         .slice()
         .sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
-    // 2. Recorremos la lista ordenada
-    lista.forEach((miembro, index) => {
+    miembrosPaginados = lista;
+
+    const totalPaginas = Math.ceil(lista.length / miembrosPorPagina);
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas || 1;
+
+    const inicio = (paginaActual - 1) * miembrosPorPagina;
+    const fin = inicio + miembrosPorPagina;
+    const pagina = lista.slice(inicio, fin);
+
+    pagina.forEach(miembro => {
         const estado = verificarEstado(miembro.fechaPago, miembro.duracion);
         const fechaFin = calcularFechaFin(miembro.fechaPago, miembro.duracion);
         const clase = estado === 'Activo' ? 'activo' : 'inactivo';
@@ -113,7 +124,7 @@ function renderTabla(filtrados = null) {
         tbody.innerHTML += `
             <tr>
                 <td>${miembro.id}</td>
-                <td><button onclick="verFicha(${index})">${miembro.nombre}</button></td>
+                <td><button onclick="verFichaPorId('${miembro.id.replace(/'/g, "\\'")}')">${miembro.nombre}</button></td>
                 <td>${miembro.fechaPago}</td>
                 <td>${fechaFin}</td>
                 <td>${miembro.tipoUsuario}</td>
@@ -121,11 +132,13 @@ function renderTabla(filtrados = null) {
                 <td>$${miembro.monto.toFixed(2)}</td>
                 <td class="${clase}">${estado}</td>
                 <td>
-                    <button onclick="eliminarMiembro(${index})">Eliminar</button>
-                    <button onclick="modificarMiembro(${index})">Modificar</button>
+                    <button onclick="eliminarMiembroPorId('${miembro.id}')">Eliminar</button>
+                    <button onclick="modificarMiembroPorId('${miembro.id}')">Modificar</button>
                 </td>
             </tr>`;
     });
+
+    renderControlesPaginacion(totalPaginas);
 }
 
 function verificarEstado(fechaPago, duracion) {
@@ -758,6 +771,65 @@ document.getElementById('checkCambiarFoto').addEventListener('change', function 
 document.getElementById('checkCambiarFoto').addEventListener('change', function () {
     document.getElementById('fotoMiembro').disabled = !this.checked;
 });
+
+function verFichaPorId(id) {
+    const miembro = miembros.find(m => m.id === id);
+    if (!miembro) {
+        alert("Miembro no encontrado");
+        return;
+    }
+    const estado = verificarEstado(miembro.fechaPago, miembro.duracion);
+    const clase = estado === "Activo" ? "activo" : "inactivo";
+    const fechaFin = calcularFechaFin(miembro.fechaPago, miembro.duracion);
+
+    document.getElementById('detalleMiembro').innerHTML = `
+        <img src="${miembro.urlFoto}" alt="Foto Miembro" />
+        <h3>${miembro.nombre}</h3>
+        <p>ID: ${miembro.id}</p>
+        <p>Tipo: ${miembro.tipoUsuario}</p>
+        <p>Duración: ${duracionTexto(miembro.duracion)}</p>
+        <p>Fecha Pago: ${miembro.fechaPago}</p>
+        <p>Fecha Fin: ${fechaFin}</p>
+        <p>Monto: $${miembro.monto.toFixed(2)}</p>
+        <p>Pago confirmado: ${miembro.pagoConfirmado ? "✅ Sí" : "❌ No"}</p>
+        <p class="${clase}">Estado: ${estado}</p>
+    `;
+    renderTablaAsistencia(miembro);
+    mostrarSeccion('fichaMiembro');
+}
+
+function renderControlesPaginacion(totalPaginas) {
+    const contenedor = document.getElementById('controlesPaginacion');
+    contenedor.innerHTML = `
+        <button onclick="cambiarPagina(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>⬅ Anterior</button>
+        Página ${paginaActual} de ${totalPaginas}
+        <button onclick="cambiarPagina(${paginaActual + 1})" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente ➡</button>
+    `;
+}
+
+function cambiarPagina(nuevaPagina) {
+    const total = Math.ceil(miembrosPaginados.length / miembrosPorPagina);
+    if (nuevaPagina < 1 || nuevaPagina > total) return;
+    paginaActual = nuevaPagina;
+    renderTabla();
+}
+function eliminarMiembroPorId(id) {
+    const index = miembros.findIndex(m => m.id === id);
+    if (index !== -1 && confirm("¿Eliminar este miembro?")) {
+        miembros.splice(index, 1);
+        guardarDatos();
+        renderTabla();
+    }
+}
+
+function modificarMiembroPorId(id) {
+    const index = miembros.findIndex(m => m.id === id);
+    if (index !== -1) {
+        modificarMiembro(index);
+    }
+}
+
+
 
 
 
