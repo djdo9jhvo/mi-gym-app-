@@ -29,7 +29,8 @@
         <button onclick="mostrarTablaAsistenciasPorDia()"> Ver Asistencias por Día</button>
         <button onclick="document.getElementById('archivoExcel').click()">Importar Excel</button>
         <input type="file" id="archivoExcel" style="display:none" accept=".xlsx,.csv" onchange="importarDesdeExcel(event)">
-        <button onclick="exportarAExcel()">Exportar Excel</button>
+        <button onclick="exportarExcelDesdeFirebase()">Exportar Excel</button>
+
     </nav>
 
     <!-- REGISTRO ENTRADA -->
@@ -38,6 +39,11 @@
         <input type="text" id="idEntrada" placeholder="ID del Miembro" />
         <button onclick="registrarEntrada()">Registrar Entrada</button>
         <div id="infoEntrada" class="member-card"></div>
+        <div id="bienvenidaEntrada" class="member-card" style="text-align:center;">
+       <h2>Bienvenido</h2>
+       <p>Escanea o escribe un ID para registrar entrada</p>
+</div>
+
     </div>
 
     <!-- VENTANA MODAL DE PAGO -->
@@ -137,6 +143,7 @@
 
 
     <table id="tablaMiembrosInactivos">
+      <div id="paginacionInactivos" style="text-align:center; margin-top:1rem;"></div>
         <thead>
             <tr>
                 <th>ID</th>
