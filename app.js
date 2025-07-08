@@ -7,6 +7,9 @@ let miembroEnEdicion = null;
 let miembrosPaginados = [];
 let paginaActual = 1;
 const miembrosPorPagina = 20;
+let miembrosInactivosPaginados = [];
+let paginaActualInactivos = 1;
+const miembrosPorPaginaInactivos = 10;
 
 
 
@@ -100,6 +103,24 @@ function registrarMiembro() {
 }
 
 function renderTabla(filtrados = null) {
+    miembros.sort((a, b) => {
+    const aID = String(a.id);
+    const bID = String(b.id);
+
+    const aEspecial = aID.startsWith("*");
+    const bEspecial = bID.startsWith("*");
+
+    if (aEspecial && !bEspecial) return 1;   // * va después
+    if (!aEspecial && bEspecial) return -1;  // normal va antes
+
+    // Extraemos número ignorando el *
+    const aNum = parseInt(aID.replace("*", ""));
+    const bNum = parseInt(bID.replace("*", ""));
+
+    return aNum - bNum;
+});
+
+
     const tbody = document.querySelector('#tablaMiembros tbody');
     tbody.innerHTML = '';
 
@@ -235,6 +256,10 @@ function registrarEntrada() {
     document.getElementById('idEntrada').value = '';
 
     if (!miembro) {
+      document.getElementById('infoEntrada').innerHTML = '';
+document.getElementById('infoEntrada').style.display = 'none';
+document.getElementById('bienvenidaEntrada').style.display = 'block';
+
         alert("⚠️ ID no encontrado");
         document.getElementById('infoEntrada').innerHTML = '';
         return;
@@ -297,6 +322,8 @@ function registrarAsistencia(miembro) {
 }
 
 function mostrarInfoEntrada(miembro, estado) {
+    document.getElementById('bienvenidaEntrada').style.display = 'none';
+    document.getElementById('infoEntrada').style.display = 'block';
     const clase = estado === "Activo" ? "activo" : "inactivo";
     const fechaFin = calcularFechaFin(miembro.fechaPago, miembro.duracion);
 
@@ -509,6 +536,8 @@ window.onload = async () => {
     await cargarDatos();
     limpiarEntradasSiEsLunes();
     mostrarSeccion('registro');
+    document.getElementById('infoEntrada').style.display = 'none';
+document.getElementById('bienvenidaEntrada').style.display = 'block';
 };
 
 document.getElementById("idEntrada").addEventListener("keyup", function(e) {
@@ -581,15 +610,24 @@ function mostrarInactivos() {
 }
 
 function renderInactivos() {
+  
     const tbody = document.querySelector("#tablaMiembrosInactivos tbody");
     tbody.innerHTML = "";
 
-    const inactivos = miembros
-    .filter(m => verificarEstado(m.fechaPago, m.duracion) === "Inactivo")
-    .sort((a, b) => parseInt(a.id) - parseInt(b.id));
+    const inactivos = miembros.filter(m => verificarEstado(m.fechaPago, m.duracion) === "Inactivo");
 
+    miembrosInactivosPaginados = inactivos;
+    const totalPaginas = Math.ceil(inactivos.length / miembrosPorPaginaInactivos);
+    const inicio = (paginaActualInactivos - 1) * miembrosPorPaginaInactivos;
+    const fin = inicio + miembrosPorPaginaInactivos;
+    const pagina = inactivos.slice(inicio, fin);
 
-    inactivos.forEach((m, i) => {
+    if (pagina.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9">No hay miembros inactivos</td></tr>`;
+        return;
+    }
+
+    pagina.forEach((m) => {
         const fechaFin = calcularFechaFin(m.fechaPago, m.duracion);
         tbody.innerHTML += `
             <tr>
@@ -604,7 +642,14 @@ function renderInactivos() {
                 <td><button onclick="modificarDesdeInactivos('${m.id}')">Modificar</button></td>
             </tr>`;
     });
+
+    document.getElementById("paginacionInactivos").innerHTML = `
+        <button ${paginaActualInactivos === 1 ? "disabled" : ""} onclick="paginaAnteriorInactivos()">Anterior</button>
+        Página ${paginaActualInactivos} de ${totalPaginas}
+        <button ${paginaActualInactivos === totalPaginas ? "disabled" : ""} onclick="paginaSiguienteInactivos()">Siguiente</button>
+    `;
 }
+
 
 function exportarAExcel() {
     if (!miembros.length) {
@@ -827,6 +872,46 @@ function modificarMiembroPorId(id) {
     if (index !== -1) {
         modificarMiembro(index);
     }
+}
+function paginaAnteriorInactivos() {
+    if (paginaActualInactivos > 1) {
+        paginaActualInactivos--;
+        renderInactivos();
+    }
+}
+
+function paginaSiguienteInactivos() {
+    const totalPaginas = Math.ceil(miembrosInactivosPaginados.length / miembrosPorPaginaInactivos);
+    if (paginaActualInactivos < totalPaginas) {
+        paginaActualInactivos++;
+        renderInactivos();
+    }
+}
+
+async function exportarExcelDesdeFirebase() {
+  try {
+    // 1. Obtener los datos desde Firestore
+    const snapshot = await getDocs(collection(db, "miembros"));
+    const datos = snapshot.docs.map(doc => doc.data());
+
+    if (datos.length === 0) {
+      alert("No hay miembros en la base de datos.");
+      return;
+    }
+
+    // 2. Convertir a hoja Excel usando SheetJS
+    const hoja = XLSX.utils.json_to_sheet(datos);
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Miembros");
+
+    // 3. Descargar el archivo Excel
+    XLSX.writeFile(libro, "miembros_firebase.xlsx");
+
+    alert("✅ Archivo exportado desde Firebase.");
+  } catch (error) {
+    console.error("❌ Error al exportar:", error);
+    alert("Error al exportar desde Firebase.");
+  }
 }
 
 
